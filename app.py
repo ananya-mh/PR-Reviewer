@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 import os
 from dotenv import load_dotenv
+from lint_reviewer import pylint_review
 
 app = Flask(__name__)
 
@@ -69,12 +70,31 @@ def handle_pr():
                 if content_data.get('encoding') == 'base64':
                     import base64
                     decoded_content = base64.b64decode(content_data['content']).decode('utf-8')
-                    directory = os.path.dirname(f"saved_pr_files/{filename}")
+                    save_path = f"saved_pr_files/{filename}"
+                    directory = os.path.dirname(save_path)
                     if directory:
                         os.makedirs(directory, exist_ok=True)
-                    with open(f"saved_pr_files/{filename}", 'w', encoding = 'utf-8') as f:
-                        f.write(decoded_content)
-                    print(f"Saved {filename}")
+                with open(save_path, 'w', encoding = 'utf-8') as f:
+                    f.write(decoded_content)
+                print(f"Saved {filename}")
+                lint_output = pylint_review(save_path)
+                review_comment = lint_output
+                headers = {'Authorization': f'token {CLASSIC_TOKEN}'}
+                payload = {'body': review_comment}
+
+                response = requests.post(comment_url, json=payload, headers=headers)
+
+                if response.status_code == 201:
+                    print("Review comment posted successfully!")
+                    # return jsonify({'message': 'Comment posted successfully!'}), 201
+                else:
+                    print("Failed to post review comment.")
+                    print("Status:", response.status_code)
+                    print("Response:", response.text)
+                    print(headers)
+                    return jsonify({'error': 'Failed to post comment.'}), 500
+                        # print(f"Printing..- {lint_output}")  # or save it to a file, or post it as a comment
+
     
 
     print("Not a PR 'opened' event.")
@@ -90,4 +110,4 @@ def get_pr_files(repo_owner, repo_name, pr_number, token):
     return response.json()
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=False, port=5000)
