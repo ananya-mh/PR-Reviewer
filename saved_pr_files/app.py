@@ -69,12 +69,7 @@ def handle_pr():
                 content_data  = file_response.json()
                 if content_data.get('encoding') == 'base64':
                     import base64
-                    # decoded_content = base64.b64decode(content_data['content']).decode('utf-8')
-                    try:
-                        decoded_content = base64.b64decode(content_data['content']).decode('utf-8')
-                    except UnicodeDecodeError:
-                        print(f"Skipping binary or non-UTF-8 file: {file['filename']}")
-                        continue
+                    decoded_content = base64.b64decode(content_data['content']).decode('utf-8')
                     save_path = f"saved_pr_files/{filename}"
                     directory = os.path.dirname(save_path)
                     if directory:
